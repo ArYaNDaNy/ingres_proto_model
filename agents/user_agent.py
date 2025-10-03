@@ -5,9 +5,8 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from llm_main import llm
-from data_analysis_agent import data_analysis_agent
 
-def user_agent(query, context=None):
+def usy_agent(query, context):
     """
     Creates basic analysis for normal users based on data analysis.
     
@@ -20,16 +19,7 @@ def user_agent(query, context=None):
     """
     try:
         # Get data analysis result
-        print("🔍 Running data analysis...")
-        analysis_result = data_analysis_agent(query)
-        
-        # Extract the actual analysis content
-        if isinstance(analysis_result, dict):
-            data_analysis = analysis_result.get('output', str(analysis_result))
-        else:
-            data_analysis = str(analysis_result)
-        
-        print("\n📝 Generating policy recommendations...\n")
+        data_analysis = context.get('data_analysis', 'No analysis available.')
         
         prompt = f"""
                     You are an expert groundwater policy advisor helping farmers and citizens in India understand complex groundwater data in a simple, practical way.
@@ -87,17 +77,3 @@ def user_agent(query, context=None):
         return error_msg
 
 
-if __name__ == "__main__":
-    query = 'List all Over-Exploited blocks in Punjab, Haryana, and Rajasthan from the 2020-2024 assessments.'
-    
-    print("="*80)
-    print("USER AGENT")
-    print("="*80)
-    print(f"Query: {query}\n")
-    
-    result = user_agent(query)
-    
-    print("\n" + "="*80)
-    print("USER SUMMARY:")
-    print("="*80)
-    print(result)  

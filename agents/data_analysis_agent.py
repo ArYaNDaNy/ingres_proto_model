@@ -9,10 +9,9 @@ import pandas as pd
 from langchain_experimental.agents.agent_toolkits import create_pandas_dataframe_agent
 
 # Load CSV once globally
-df = pd.read_csv('../ingres_one.csv')
 
 
-def query_maker(query):
+def query_maker(df,query):
     """Optimizes user query for pandas agent by identifying relevant columns."""
     try:
         columns = df.columns.tolist()
@@ -42,52 +41,52 @@ def query_maker(query):
         return opt_query.content.strip()
     
     except FileNotFoundError:
-        return f"Error: CSV file not found at '../ingres_one.csv'"
+        return f"Error: CSV file not found at 'ingres_one.csv'"
     except Exception as e:
         return f"Error optimizing query: {str(e)}"
 
 
 
 
-def data_analysis_agent(query, max_retries=3):
+def data_analysis_agent(df,query, max_retries=3):
     """Creates a data analysis agent with custom instructions."""
-    opt_query = query_maker(query)
+    opt_query = query_maker(df,query)
     
     print(f"Original Query: {query}")
     print(f"Optimized Query: {opt_query}\n")
     
     AGENT_PREFIX = f"""You are an expert data analyst specializing in groundwater resources analysis using pandas.
 
-CONTEXT:
-- You have access to a groundwater dataset with {len(df)} records and {len(df.columns)} columns
-- User's optimized query: "{opt_query}"
+                    CONTEXT:
+                    - You have access to a groundwater dataset with {len(df)} records and {len(df.columns)} columns
+                    - User's optimized query: "{opt_query}"
 
-YOUR RESPONSIBILITIES:
-1. Convert the user query into efficient pandas operations
-2. Perform comprehensive data analysis including:
-   - Statistical summaries (mean, median, std, min, max)
-   - Comparisons and trends
-   - Grouping and aggregations where relevant
-   - Data quality checks (missing values, outliers)
-3. Extract maximum insights from the data
-4. Present findings in a clear, structured format
+                    YOUR RESPONSIBILITIES:
+                    1. Convert the user query into efficient pandas operations
+                    2. Perform comprehensive data analysis including:
+                    - Statistical summaries (mean, median, std, min, max)
+                    - Comparisons and trends
+                    - Grouping and aggregations where relevant
+                    - Data quality checks (missing values, outliers)
+                    3. Extract maximum insights from the data
+                    4. Present findings in a clear, structured format
 
-IMPORTANT NOTES:
-- Your analysis will be used by downstream agents (visualization, policy recommendation, etc.)
-- Be thorough and include all relevant metrics
-- Always validate data before analysis (check for NaN, data types)
-- If comparing regions, include percentage differences and rankings
-- Round numerical outputs to 2 decimal places for readability
+                    IMPORTANT NOTES:
+                    - Your analysis will be used by downstream agents (visualization, policy recommendation, etc.)
+                    - Be thorough and include all relevant metrics
+                    - Always validate data before analysis (check for NaN, data types)
+                    - If comparing regions, include percentage differences and rankings
+                    - Round numerical outputs to 2 decimal places for readability
 
-OUTPUT FORMAT:
-Provide your analysis in this structure:
-1. **Data Overview**: Brief summary of filtered/analyzed data
-2. **Key Findings**: Main insights with numbers
-3. **Detailed Analysis**: Breakdown by categories if applicable
-4. **Recommendations**: What the data suggests
+                    OUTPUT FORMAT:
+                    Provide your analysis in this structure:
+                    1. **Data Overview**: Brief summary of filtered/analyzed data
+                    2. **Key Findings**: Main insights with numbers
+                    3. **Detailed Analysis**: Breakdown by categories if applicable
+                    4. **Recommendations**: What the data suggests
 
-Begin your analysis now.
-"""
+                    Begin your analysis now.
+                    """
 
     agent_executor = create_pandas_dataframe_agent(
         llm=llm,
