@@ -7,4 +7,5 @@ python-dotenv
 wikipedia
 langchain-experimental
 langchain_tavily
+flask
 tabulate
