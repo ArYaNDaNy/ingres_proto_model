@@ -1,0 +1,10 @@
+langchain
+langchain-google-genai
+google-generativeai
+pandas
+tavily-python
+python-dotenv
+wikipedia
+langchain-experimental
+langchain_tavily
+tabulate
