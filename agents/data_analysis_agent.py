@@ -107,14 +107,6 @@ Begin your analysis now.
         except Exception as e:
             print(f"\n❌ Unexpected error: {type(e).__name__}: {e}")
             raise
-
-
-
-if __name__ == '__main__':
-    query = 'List all Over-Exploited blocks in Punjab, Haryana, and Rajasthan from the 2020-2024 assessments.'
-    result = data_analysis_agent(query)
     
-    print("\n" + "="*80)
-    print("FINAL ANALYSIS RESULT:")
-    print("="*80)
-    print(result['output'])
+
+
