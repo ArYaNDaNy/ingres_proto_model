@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import pandas as pd
 import json
+from flask_cors import CORS
 import sys
 import os
 # Ensure the path is set correctly for imports in main_agent.py and the agents
@@ -17,6 +18,7 @@ except ImportError:
 
 # 1. Initialize Flask App
 app = Flask(__name__)
+CORS(app) 
 
 # 2. Load Data Once on Application Startup
 # This is crucial for performance: DO NOT load the CSV inside the route function.

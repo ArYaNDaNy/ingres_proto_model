@@ -9,3 +9,4 @@ langchain-experimental
 langchain_tavily
 flask
 tabulate
+flask_cors
