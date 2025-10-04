@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Bot, User, Loader2 } from "lucide-react";
 
-const ChatAssistant = ({ onImageUpdate }) => {
+const ChatAssistant = () => {
   const [messages, setMessages] = useState([
     {
       id: "welcome",
@@ -63,15 +63,15 @@ const ChatAssistant = ({ onImageUpdate }) => {
     setIsLoading(true);
 
     try {
-      const response = await fetch("http://127.0.0.1:5000/ask", {
+      const response = await fetch("http://localhost:5000/api/run_agent", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         // 5. SEND THE ROLE ALONG WITH THE QUERY
         body: JSON.stringify({ 
-          query: messageToSend,  // Corrected from 'question' to match your Python backend
-          role: userRole || 'user' // Send the selected role
+          query: messageToSend,  
+          role: userRole || 'user'
         }),
       });
 
@@ -82,6 +82,7 @@ const ChatAssistant = ({ onImageUpdate }) => {
       
 
       const data = await response.json();
+      console.log("✅ Full backend response:", data);
       
       if (data.error) {
         const errorMessage = {
@@ -187,11 +188,11 @@ const ChatAssistant = ({ onImageUpdate }) => {
             <div className="flex flex-col gap-2 p-2">
                 <p className="text-sm text-muted-foreground px-2">Please select your role:</p>
                 <div className="grid grid-cols-2 gap-2">
-                    <button onClick={() => handleRoleSelect('student')} className="text-left px-3 py-2 text-sm bg-muted rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors">
-                        🎓 Student
+                    <button onClick={() => handleRoleSelect('user')} className="text-left px-3 py-2 text-sm bg-muted rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors">
+                        User
                     </button>
-                    <button onClick={() => handleRoleSelect('researcher')} className="text-left px-3 py-2 text-sm bg-muted rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors">
-                        🔬 Policymakers
+                    <button onClick={() => handleRoleSelect('government')} className="text-left px-3 py-2 text-sm bg-muted rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors">
+                        Policymakers
                     </button>
                 </div>
             </div>
