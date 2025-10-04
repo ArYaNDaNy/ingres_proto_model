@@ -11,7 +11,7 @@ const ChatAssistant = ({ onImageUpdate }) => {
     },
   ]);
 
-  // 1. STATE TO TRACK USER ROLE
+
   const [userRole, setUserRole] = useState(null); 
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -191,7 +191,7 @@ const ChatAssistant = ({ onImageUpdate }) => {
                         🎓 Student
                     </button>
                     <button onClick={() => handleRoleSelect('researcher')} className="text-left px-3 py-2 text-sm bg-muted rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors">
-                        🔬 Policymakers 
+                        🔬 Policymakers
                     </button>
                 </div>
             </div>
