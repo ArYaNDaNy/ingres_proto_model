@@ -11,7 +11,6 @@ const ChatAssistant = () => {
     },
   ]);
 
-
   const [userRole, setUserRole] = useState(null); 
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -24,8 +23,23 @@ const ChatAssistant = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Convert backend text with **bold**, - bullets, and \n to HTML
+  const formatMessageText = (text) => {
+    if (!text) return "";
+    let html = text
+      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") // bold
+      .replace(/^- (.*)/gm, "<li>$1</li>");             // bullets
+    // wrap all <li> in <ul>
+    if (html.includes("<li>")) {
+      html = "<ul>" + html + "</ul>";
+    }
+    // convert remaining \n to <br>
+    html = html.replace(/\n/g, "<br />");
+    return html;
+  };
   
-  // 2. HANDLER FOR WHEN A ROLE IS SELECTED
+  // Handler for role selection
   const handleRoleSelect = (role) => {
     setUserRole(role);
 
@@ -45,7 +59,6 @@ const ChatAssistant = () => {
 
     setMessages((prev) => [...prev, roleMessage, botFollowUp]);
   };
-
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading) return;
@@ -68,7 +81,6 @@ const ChatAssistant = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        // 5. SEND THE ROLE ALONG WITH THE QUERY
         body: JSON.stringify({ 
           query: messageToSend,  
           role: userRole || 'user'
@@ -79,11 +91,9 @@ const ChatAssistant = () => {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      
-
       const data = await response.json();
       console.log("✅ Full backend response:", data);
-      
+
       if (data.error) {
         const errorMessage = {
           id: (Date.now() + 1).toString(),
@@ -94,23 +104,20 @@ const ChatAssistant = () => {
         setMessages((prev) => [...prev, errorMessage]);
         return;
       }
-      
-      // The backend response is now expected under 'main_output'
+
       const answer = data.main_output?.summary_text || data.main_output || "I couldn't find an answer. Please try rephrasing.";
       
       const assistantMessage = {
         id: (Date.now() + 1).toString(),
-        text: answer,
+        text: formatMessageText(answer),
         isUser: false,
         timestamp: new Date(),
+        isHTML: true
       };
       setMessages((prev) => [...prev, assistantMessage]);
 
-      // Your visualization logic would now read from 'visualization_context'
       if (data.visualization_context) {
-        // Here you would trigger the chart update with data.visualization_context
         console.log("Visualization data received:", data.visualization_context);
-        // onImageUpdate(some_url_or_data);
       }
 
     } catch (error) {
@@ -158,64 +165,48 @@ const ChatAssistant = () => {
         {messages.map((message) => (
           <div
             key={message.id}
-            className={`flex items-start gap-3 animate-fade-in ${
-              message.isUser ? "flex-row-reverse" : ""
-            }`}
+            className={`flex items-start gap-3 animate-fade-in ${message.isUser ? "flex-row-reverse" : ""}`}
           >
-            <div
-              className={`flex items-center justify-center w-8 h-8 rounded-full ${
-                message.isUser
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground"
-              }`}
-            >
+            <div className={`flex items-center justify-center w-8 h-8 rounded-full ${message.isUser ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
               {message.isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
             </div>
-            <div
-              className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-                message.isUser
-                  ? "bg-chat-user-bg text-chat-user-text"
-                  : "bg-chat-assistant-bg text-chat-assistant-text"
-              }`}
-            >
-              <p className="text-sm leading-relaxed whitespace-pre-line">{message.text}</p>
+            <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${message.isUser ? "bg-chat-user-bg text-chat-user-text" : "bg-chat-assistant-bg text-chat-assistant-text"}`}>
+              {message.isHTML ? (
+                <p className="text-sm leading-relaxed whitespace-pre-line" dangerouslySetInnerHTML={{ __html: message.text }}></p>
+              ) : (
+                <p className="text-sm leading-relaxed whitespace-pre-line">{message.text}</p>
+              )}
             </div>
           </div>
         ))}
-        
-        
+
         {messages.length === 1 && !userRole && !isLoading && (
-            <div className="flex flex-col gap-2 p-2">
-                <p className="text-sm text-muted-foreground px-2">Please select your role:</p>
-                <div className="grid grid-cols-2 gap-2">
-                    <button onClick={() => handleRoleSelect('user')} className="text-left px-3 py-2 text-sm bg-muted rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors">
-                        User
-                    </button>
-                    <button onClick={() => handleRoleSelect('government')} className="text-left px-3 py-2 text-sm bg-muted rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors">
-                        Policymakers
-                    </button>
-                </div>
+          <div className="flex flex-col gap-2 p-2">
+            <p className="text-sm text-muted-foreground px-2">Please select your role:</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => handleRoleSelect('user')} className="text-left px-3 py-2 text-sm bg-muted rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors">
+                User
+              </button>
+              <button onClick={() => handleRoleSelect('government')} className="text-left px-3 py-2 text-sm bg-muted rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors">
+                Policymakers
+              </button>
             </div>
+          </div>
         )}
-        
-        
+
         {userRole && messages.length === 3 && !isLoading && (
           <div className="flex flex-col gap-2">
             <p className="text-sm text-muted-foreground px-2">💡 Quick questions:</p>
             <div className="grid grid-cols-2 gap-2">
               {quickQuestions.map((question, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleQuickQuestion(question)}
-                  className="text-left px-3 py-2 text-sm bg-muted rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors"
-                >
+                <button key={index} onClick={() => handleQuickQuestion(question)} className="text-left px-3 py-2 text-sm bg-muted rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors">
                   {question}
                 </button>
               ))}
             </div>
           </div>
         )}
-        
+
         {isLoading && (
           <div className="flex items-start gap-3 animate-fade-in">
             <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted text-muted-foreground">
@@ -229,7 +220,7 @@ const ChatAssistant = () => {
             </div>
           </div>
         )}
-        
+
         <div ref={messagesEndRef} />
       </div>
 
@@ -243,7 +234,7 @@ const ChatAssistant = () => {
             placeholder="Ask: 'Water in Kerala' or 'Compare Bihar districts'..."
             className="flex-1 px-3 py-2 border rounded-lg bg-background text-foreground"
             style={{ border: `1px solid var(--border)` }}
-            disabled={isLoading || !userRole} // Disable input until role is selected
+            disabled={isLoading || !userRole}
           />
           <button
             onClick={handleSendMessage}
