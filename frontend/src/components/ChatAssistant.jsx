@@ -5,11 +5,14 @@ const ChatAssistant = ({ onImageUpdate }) => {
   const [messages, setMessages] = useState([
     {
       id: "welcome",
-      text: "Hi! I'm your groundwater assistant 🌊\n\nI can help farmers, researchers, and water managers with:\n• Groundwater levels in any state/district\n• Compare water availability between areas\n• Find the best and worst water situations\n• Simple charts and recommendations\n\nJust ask me like: \"How is water in Punjab?\" or \"Compare districts in Kerala\"",
+      text: "Hi! I'm your groundwater assistant 🌊\n\nFirst, please let me know your role so I can tailor the experience for you.",
       isUser: false,
       timestamp: new Date(),
     },
   ]);
+
+  // 1. STATE TO TRACK USER ROLE
+  const [userRole, setUserRole] = useState(null); 
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
@@ -21,6 +24,28 @@ const ChatAssistant = ({ onImageUpdate }) => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+  
+  // 2. HANDLER FOR WHEN A ROLE IS SELECTED
+  const handleRoleSelect = (role) => {
+    setUserRole(role);
+
+    const roleMessage = {
+      id: Date.now().toString(),
+      text: `I'm a ${role}.`,
+      isUser: true,
+      timestamp: new Date(),
+    };
+    
+    const botFollowUp = {
+        id: (Date.now() + 1).toString(),
+        text: `Great! As a ${role}, you might find these questions helpful to get started.`,
+        isUser: false,
+        timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, roleMessage, botFollowUp]);
+  };
+
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading) return;
@@ -38,14 +63,15 @@ const ChatAssistant = ({ onImageUpdate }) => {
     setIsLoading(true);
 
     try {
-      // Send the question parameter (matching your updated backend)
       const response = await fetch("http://127.0.0.1:5000/ask", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        // 5. SEND THE ROLE ALONG WITH THE QUERY
         body: JSON.stringify({ 
-          question: messageToSend  // Primary parameter for the updated backend
+          query: messageToSend,  // Corrected from 'question' to match your Python backend
+          role: userRole || 'user' // Send the selected role
         }),
       });
 
@@ -55,7 +81,6 @@ const ChatAssistant = ({ onImageUpdate }) => {
 
       const data = await response.json();
       
-      // Handle error responses from backend
       if (data.error) {
         const errorMessage = {
           id: (Date.now() + 1).toString(),
@@ -67,32 +92,32 @@ const ChatAssistant = ({ onImageUpdate }) => {
         return;
       }
       
-      // Add assistant response
+      // The backend response is now expected under 'main_output'
+      const answer = data.main_output?.summary_text || data.main_output || "I couldn't find an answer. Please try rephrasing.";
+      
       const assistantMessage = {
         id: (Date.now() + 1).toString(),
-        text: data.answer || "I couldn't find that information. Try asking about a specific state or district!",
+        text: answer,
         isUser: false,
         timestamp: new Date(),
       };
-
       setMessages((prev) => [...prev, assistantMessage]);
 
-      // Update image with cache-busting timestamp
-      if (data.image_url) {
-        const cacheBustedUrl = `${data.image_url}?t=${Date.now()}`;
-        console.log("Updating image with URL:", cacheBustedUrl);
-        onImageUpdate(cacheBustedUrl);
+      // Your visualization logic would now read from 'visualization_context'
+      if (data.visualization_context) {
+        // Here you would trigger the chart update with data.visualization_context
+        console.log("Visualization data received:", data.visualization_context);
+        // onImageUpdate(some_url_or_data);
       }
+
     } catch (error) {
       console.error("Error sending message:", error);
-      
       const errorMessage = {
         id: (Date.now() + 1).toString(),
         text: `🔌 Can't connect to server. Make sure backend is running on http://127.0.0.1:5000`,
         isUser: false,
         timestamp: new Date(),
       };
-
       setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
@@ -106,7 +131,6 @@ const ChatAssistant = ({ onImageUpdate }) => {
     }
   };
 
-  // Quick action buttons for common questions
   const quickQuestions = [
     "Water levels in Maharashtra",
     "Compare Punjab districts", 
@@ -142,13 +166,8 @@ const ChatAssistant = ({ onImageUpdate }) => {
                   : "bg-muted text-muted-foreground"
               }`}
             >
-              {message.isUser ? (
-                <User className="w-4 h-4" />
-              ) : (
-                <Bot className="w-4 h-4" />
-              )}
+              {message.isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
             </div>
-            
             <div
               className={`max-w-[85%] rounded-2xl px-4 py-3 ${
                 message.isUser
@@ -161,8 +180,23 @@ const ChatAssistant = ({ onImageUpdate }) => {
           </div>
         ))}
         
-        {/* Quick question buttons - only show on first message */}
-        {messages.length === 1 && !isLoading && (
+        
+        {messages.length === 1 && !userRole && !isLoading && (
+            <div className="flex flex-col gap-2 p-2">
+                <p className="text-sm text-muted-foreground px-2">Please select your role:</p>
+                <div className="grid grid-cols-2 gap-2">
+                    <button onClick={() => handleRoleSelect('student')} className="text-left px-3 py-2 text-sm bg-muted rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors">
+                        🎓 Student
+                    </button>
+                    <button onClick={() => handleRoleSelect('researcher')} className="text-left px-3 py-2 text-sm bg-muted rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors">
+                        🔬 Policymakers 
+                    </button>
+                </div>
+            </div>
+        )}
+        
+        
+        {userRole && messages.length === 3 && !isLoading && (
           <div className="flex flex-col gap-2">
             <p className="text-sm text-muted-foreground px-2">💡 Quick questions:</p>
             <div className="grid grid-cols-2 gap-2">
@@ -206,11 +240,11 @@ const ChatAssistant = ({ onImageUpdate }) => {
             placeholder="Ask: 'Water in Kerala' or 'Compare Bihar districts'..."
             className="flex-1 px-3 py-2 border rounded-lg bg-background text-foreground"
             style={{ border: `1px solid var(--border)` }}
-            disabled={isLoading}
+            disabled={isLoading || !userRole} // Disable input until role is selected
           />
           <button
             onClick={handleSendMessage}
-            disabled={!inputValue.trim() || isLoading}
+            disabled={!inputValue.trim() || isLoading || !userRole}
             className="shrink-0 px-3 py-2 bg-primary text-primary-foreground rounded-lg flex items-center justify-center"
             style={{ minWidth: '44px', minHeight: '44px' }}
           >
