@@ -1,17 +1,18 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Bot, User, Loader2 } from "lucide-react";
 
-const ChatAssistant = () => {
+// CHANGED: Accept onDataUpdate as a prop
+const ChatAssistant = ({ onDataUpdate }) => {
   const [messages, setMessages] = useState([
     {
       id: "welcome",
-      text: "Hi! I'm your groundwater assistant 🌊\n\nFirst, please let me know your role so I can tailor the experience for you.",
+      text: "Hi! I'm INGRES assistant 🌊\n\nFirst, please let me know your role so I can tailor the experience for you.",
       isUser: false,
       timestamp: new Date(),
     },
   ]);
 
-  const [userRole, setUserRole] = useState(null); 
+  const [userRole, setUserRole] = useState(null);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
@@ -24,12 +25,12 @@ const ChatAssistant = () => {
     scrollToBottom();
   }, [messages]);
 
-  // Convert backend text with **bold**, - bullets, and \n to HTML
+  // Convert backend text with *bold*, - bullets, and \n to HTML
   const formatMessageText = (text) => {
     if (!text) return "";
     let html = text
-      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") // bold
-      .replace(/^- (.*)/gm, "<li>$1</li>");             // bullets
+      .replace(/\*(.*?)\*/g, "<strong>$1</strong>") // bold
+      .replace(/^- (.*)/gm, "<li>$1</li>"); // bullets
     // wrap all <li> in <ul>
     if (html.includes("<li>")) {
       html = "<ul>" + html + "</ul>";
@@ -38,7 +39,7 @@ const ChatAssistant = () => {
     html = html.replace(/\n/g, "<br />");
     return html;
   };
-  
+
   // Handler for role selection
   const handleRoleSelect = (role) => {
     setUserRole(role);
@@ -49,12 +50,12 @@ const ChatAssistant = () => {
       isUser: true,
       timestamp: new Date(),
     };
-    
+
     const botFollowUp = {
-        id: (Date.now() + 1).toString(),
-        text: `Great! As a ${role}, you might find these questions helpful to get started.`,
-        isUser: false,
-        timestamp: new Date(),
+      id: (Date.now() + 1).toString(),
+      text: `Great! As a ${role}, you might find these questions helpful to get started.`,
+      isUser: false,
+      timestamp: new Date(),
     };
 
     setMessages((prev) => [...prev, roleMessage, botFollowUp]);
@@ -81,9 +82,9 @@ const ChatAssistant = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ 
-          query: messageToSend,  
-          role: userRole || 'user'
+        body: JSON.stringify({
+          query: messageToSend,
+          role: userRole || "user",
         }),
       });
 
@@ -105,26 +106,37 @@ const ChatAssistant = () => {
         return;
       }
 
-      const answer = data.main_output?.summary_text || data.main_output || "I couldn't find an answer. Please try rephrasing.";
-      
+      const answer =
+        data.main_output?.summary_text ||
+        data.main_output ||
+        "I couldn't find an answer. Please try rephrasing.";
+
       const assistantMessage = {
         id: (Date.now() + 1).toString(),
         text: formatMessageText(answer),
         isUser: false,
         timestamp: new Date(),
-        isHTML: true
+        isHTML: true,
       };
       setMessages((prev) => [...prev, assistantMessage]);
 
-      if (data.visualization_context) {
-        console.log("Visualization data received:", data.visualization_context);
+      // --- CHANGED: This is the core logic update ---
+      if (
+        data.visualization_context?.data &&
+        data.visualization_context.data.length > 0
+      ) {
+        // If we have data, pass it up to the Index component to be displayed
+        onDataUpdate(data.visualization_context.data);
+      } else {
+        // If the new response has no chart data, clear the old chart
+        onDataUpdate(null);
       }
-
+      // ---------------------------------------------
     } catch (error) {
       console.error("Error sending message:", error);
       const errorMessage = {
         id: (Date.now() + 1).toString(),
-        text: `🔌 Can't connect to server. Make sure backend is running on http://127.0.0.1:5000`,
+        text: "🔌 Can't connect to server. Make sure backend is running on http://127.0.0.1:5000",
         isUser: false,
         timestamp: new Date(),
       };
@@ -143,51 +155,87 @@ const ChatAssistant = () => {
 
   const quickQuestions = [
     "Water levels in Maharashtra",
-    "Compare Punjab districts", 
+    "Compare Punjab districts",
     "Best groundwater states",
-    "Water problems in Rajasthan"
+    "Water problems in Rajasthan",
   ];
 
   const handleQuickQuestion = (question) => {
     setInputValue(question);
   };
 
+  // The rest of your JSX remains exactly the same...
   return (
     <div className="bg-surface rounded-lg border h-full flex flex-col">
       <div className="p-4 border-b">
-        <h2 className="text-lg font-semibold text-foreground">INGRES Assistant 🌊</h2>
+        <h2 className="text-lg font-semibold text-foreground">
+          INGRES Assistant 🌊
+        </h2>
         <p className="text-sm text-muted-foreground">
           Simple groundwater answers + charts for farmers & researchers
         </p>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Your message mapping logic here... */}
         {messages.map((message) => (
           <div
             key={message.id}
-            className={`flex items-start gap-3 animate-fade-in ${message.isUser ? "flex-row-reverse" : ""}`}
+            className={`flex items-start gap-3 animate-fade-in ${
+              message.isUser ? "flex-row-reverse" : ""
+            }`}
           >
-            <div className={`flex items-center justify-center w-8 h-8 rounded-full ${message.isUser ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-              {message.isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
-            </div>
-            <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${message.isUser ? "bg-chat-user-bg text-chat-user-text" : "bg-chat-assistant-bg text-chat-assistant-text"}`}>
-              {message.isHTML ? (
-                <p className="text-sm leading-relaxed whitespace-pre-line" dangerouslySetInnerHTML={{ __html: message.text }}></p>
+            <div
+              className={`flex items-center justify-center w-8 h-8 rounded-full ${
+                message.isUser
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {message.isUser ? (
+                <User className="w-4 h-4" />
               ) : (
-                <p className="text-sm leading-relaxed whitespace-pre-line">{message.text}</p>
+                <Bot className="w-4 h-4" />
+              )}
+            </div>
+            <div
+              className={`max-w-[85%] rounded-2xl px-4 py-3 ${
+                message.isUser
+                  ? "bg-chat-user-bg text-chat-user-text"
+                  : "bg-chat-assistant-bg text-chat-assistant-text"
+              }`}
+            >
+              {message.isHTML ? (
+                <p
+                  className="text-sm leading-relaxed whitespace-pre-line"
+                  dangerouslySetInnerHTML={{ __html: message.text }}
+                ></p>
+              ) : (
+                <p className="text-sm leading-relaxed whitespace-pre-line">
+                  {message.text}
+                </p>
               )}
             </div>
           </div>
         ))}
 
+        {/* Your conditional UI for roles and quick questions... */}
         {messages.length === 1 && !userRole && !isLoading && (
           <div className="flex flex-col gap-2 p-2">
-            <p className="text-sm text-muted-foreground px-2">Please select your role:</p>
+            <p className="text-sm text-muted-foreground px-2">
+              Please select your role:
+            </p>
             <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => handleRoleSelect('user')} className="text-left px-3 py-2 text-sm bg-muted rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors">
+              <button
+                onClick={() => handleRoleSelect("user")}
+                className="text-left px-3 py-2 text-sm bg-muted rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors"
+              >
                 User
               </button>
-              <button onClick={() => handleRoleSelect('government')} className="text-left px-3 py-2 text-sm bg-muted rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors">
+              <button
+                onClick={() => handleRoleSelect("government")}
+                className="text-left px-3 py-2 text-sm bg-muted rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors"
+              >
                 Policymakers
               </button>
             </div>
@@ -196,10 +244,16 @@ const ChatAssistant = () => {
 
         {userRole && messages.length === 3 && !isLoading && (
           <div className="flex flex-col gap-2">
-            <p className="text-sm text-muted-foreground px-2">💡 Quick questions:</p>
+            <p className="text-sm text-muted-foreground px-2">
+              💡 Quick questions:
+            </p>
             <div className="grid grid-cols-2 gap-2">
               {quickQuestions.map((question, index) => (
-                <button key={index} onClick={() => handleQuickQuestion(question)} className="text-left px-3 py-2 text-sm bg-muted rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors">
+                <button
+                  key={index}
+                  onClick={() => handleQuickQuestion(question)}
+                  className="text-left px-3 py-2 text-sm bg-muted rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors"
+                >
                   {question}
                 </button>
               ))}
@@ -215,7 +269,9 @@ const ChatAssistant = () => {
             <div className="bg-chat-assistant-bg text-chat-assistant-text rounded-2xl px-4 py-3">
               <div className="flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm">Getting water data and making chart...</span>
+                <span className="text-sm">
+                  Getting water data and making chart...
+                </span>
               </div>
             </div>
           </div>
@@ -225,6 +281,7 @@ const ChatAssistant = () => {
       </div>
 
       <div className="p-4 border-t">
+        {/* Your input form JSX... */}
         <div className="flex gap-2">
           <input
             type="text"
@@ -233,14 +290,14 @@ const ChatAssistant = () => {
             onKeyPress={handleKeyPress}
             placeholder="Ask: 'Water in Kerala' or 'Compare Bihar districts'..."
             className="flex-1 px-3 py-2 border rounded-lg bg-background text-foreground"
-            style={{ border: `1px solid var(--border)` }}
+            style={{ border: "1px solid var(--border)" }}
             disabled={isLoading || !userRole}
           />
           <button
             onClick={handleSendMessage}
             disabled={!inputValue.trim() || isLoading || !userRole}
             className="shrink-0 px-3 py-2 bg-primary text-primary-foreground rounded-lg flex items-center justify-center"
-            style={{ minWidth: '44px', minHeight: '44px' }}
+            style={{ minWidth: "44px", minHeight: "44px" }}
           >
             <Send className="w-4 h-4" />
           </button>
