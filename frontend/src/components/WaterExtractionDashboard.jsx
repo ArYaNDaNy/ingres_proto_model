@@ -22,6 +22,9 @@ ChartJS.register(
   CategoryScale, LinearScale, BarElement, PointElement, LineElement, ArcElement, Title, Tooltip, Legend
 );
 
+ChartJS.defaults.color = 'hsl(0, 0%, 100%)';              // This is now pure white
+ChartJS.defaults.borderColor = 'hsla(120, 18%, 25%, 1.00)';
+
 // Helper function to create a readable label from a data key
 const formatMetricKey = (key) => {
   if (!key) return '';
