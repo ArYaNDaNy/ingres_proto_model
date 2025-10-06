@@ -24,8 +24,8 @@ const Header = () => {
               key={item.name}
               className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
                 item.active
-                  ? "text-primary bg-primary-light/20"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  ? "active-tab-glow"
+                  : "text-primary bg-primary-light/20"
               }`}
             >
               {item.name}
