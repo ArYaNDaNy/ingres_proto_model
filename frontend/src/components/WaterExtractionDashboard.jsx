@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo,useRef } from 'react';
 import { Bar, Line, Pie } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -12,6 +12,7 @@ import {
   LineElement,
   ArcElement,
 } from 'chart.js';
+import { FileText } from 'lucide-react'; // ADDED
 
 // Note: You may need to adjust the path to where your ImageViewer.js file is located.
 import ImageViewer from './ImageViewer'; 
@@ -32,10 +33,11 @@ const formatMetricKey = (key) => {
 };
 
 const WaterExtractionDashboard = ({ data: rawData }) => {
-  
+ 
   if (!rawData || rawData.length === 0) {
     return <ImageViewer imageUrl={null} />;
   }
+   const barChartRef = useRef(null);
 
   // --- DYNAMICALLY FIND THE PRIMARY METRIC KEY ---
   const metricKey = useMemo(() => {
@@ -63,7 +65,7 @@ const WaterExtractionDashboard = ({ data: rawData }) => {
   const hasMultipleYears = uniqueYears.length > 1;
   const hasData = rawData && rawData.length > 0 && metricKey;
 
-  // --- CHART DATA PREPARATION (code is unchanged, kept for context) ---
+  
   const barChartData = useMemo(() => {
     if (!hasData || !hasMultipleDistricts) return null;
     let districtMetrics = rawData.map(item => ({ district: item.district, value: item[metricKey] }));
@@ -135,6 +137,29 @@ datasets: [{
   }, [rawData, hasData, hasMultipleDistricts, metricKey]);
   // --- END OF CHART DATA PREPARATION ---
 
+  
+  
+const handleGenerateReport = () => {
+  const chart = barChartRef.current; // Get the chart instance
+
+  if (chart) {
+    // Get the image data URL
+    const imageUrl = chart.toBase64Image('image/png');
+
+    // Create a temporary link element to trigger the download
+    const link = document.createElement('a');
+    link.href = imageUrl;
+    link.download = 'district_comparison_chart.png'; // Set the filename
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } else {
+    console.error("Could not get chart reference.");
+    alert("Could not save chart image.");
+  }
+};
+  
+
   const chartOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }};
   
   const renderCharts = () => {
@@ -149,7 +174,7 @@ datasets: [{
             {showBar && (
               <div>
                 <h2 className="text-lg font-semibold text-gray-700 mb-4">District Comparison {uniqueYears.length === 1 ? `for ${uniqueYears[0]}` : ''}</h2>
-                <div className="relative" style={{ height: '400px' }}><Bar options={chartOptions} data={barChartData} /></div>
+                <div className="relative" style={{ height: '400px' }}><Bar ref={barChartRef} options={chartOptions} data={barChartData} /></div>
               </div>
             )}
             {showLine && (
@@ -160,19 +185,17 @@ datasets: [{
             )}
             {showPie && (
               <div>
-                 <h2 className="text-lg font-semibold text-gray-700 mb-4">District Contribution</h2>
-                 <div className="relative flex justify-center" style={{ height: '350px' }}><Pie options={{...chartOptions, maintainAspectRatio: false }} data={pieChartData} /></div>
+                  <h2 className="text-lg font-semibold text-gray-700 mb-4">District Contribution</h2>
+                  <div className="relative flex justify-center" style={{ height: '350px' }}><Pie options={{...chartOptions, maintainAspectRatio: false }} data={pieChartData} /></div>
               </div>
             )}
-             {!showBar && !showLine && !showPie && (
-               <p className="text-gray-600">The provided data is not suitable for the available chart types (e.g., single data point).</p>
-             )}
+              {!showBar && !showLine && !showPie && (
+                <p className="text-gray-600">The provided data is not suitable for the available chart types (e.g., single data point).</p>
+              )}
         </main>
     );
   };
 
-  // --- STYLE CHANGE IS HERE ---
-  // Changed `shadow-md` to `border` and `p-4 sm:p-6` to `p-6` for consistency.
   return (
     <div className="bg-surface rounded-lg border w-full h-full p-6 overflow-y-auto">
       <header className="mb-6">
@@ -181,6 +204,20 @@ datasets: [{
         </h1>
       </header>
       {renderCharts()}
+
+      
+      {hasData && (
+        <footer className="mt-4 pt-4 border-t" style={{ textAlign: 'right' }}>
+          <button
+            onClick={handleGenerateReport}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium"
+          >
+            <FileText className="w-4 h-4" />
+            Download Report
+          </button>
+        </footer>
+      )}
+      
     </div>
   );
 };

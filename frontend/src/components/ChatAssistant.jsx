@@ -227,14 +227,14 @@ const ChatAssistant = ({ onDataUpdate }) => {
             </p>
             <div className="grid grid-cols-2 gap-2">
               <button
-                onClick={() => handleRoleSelect("user")}
-                className="text-left px-3 py-2 text-sm bg-muted rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors"
-              >
-                User
-              </button>
+  onClick={() => handleRoleSelect("user")}
+  className="w-full text-center text-sm font-medium rounded-lg role-selection-card"
+>
+  User
+</button>
               <button
                 onClick={() => handleRoleSelect("government")}
-                className="text-left px-3 py-2 text-sm bg-muted rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors"
+                className="w-full text-center text-sm font-medium rounded-lg role-selection-card"
               >
                 Policymakers
               </button>
@@ -252,7 +252,7 @@ const ChatAssistant = ({ onDataUpdate }) => {
                 <button
                   key={index}
                   onClick={() => handleQuickQuestion(question)}
-                  className="text-left px-3 py-2 text-sm bg-muted rounded-lg hover:bg-primary hover:text-primary-foreground transition-colors"
+                  className="w-full text-center text-sm font-medium rounded-lg role-selection-card"
                 >
                   {question}
                 </button>
