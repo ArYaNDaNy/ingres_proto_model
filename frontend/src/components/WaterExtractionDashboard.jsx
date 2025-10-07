@@ -1,4 +1,4 @@
-import React, { useMemo,useRef } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { Bar, Line, Pie } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -12,7 +12,7 @@ import {
   LineElement,
   ArcElement,
 } from 'chart.js';
-import { FileText } from 'lucide-react'; // ADDED
+import { FileText } from 'lucide-react';
 
 // Note: You may need to adjust the path to where your ImageViewer.js file is located.
 import ImageViewer from './ImageViewer'; 
@@ -22,7 +22,7 @@ ChartJS.register(
   CategoryScale, LinearScale, BarElement, PointElement, LineElement, ArcElement, Title, Tooltip, Legend
 );
 
-ChartJS.defaults.color = 'hsl(0, 0%, 100%)';              // This is now pure white
+ChartJS.defaults.color = 'hsl(0, 0%, 100%)';
 ChartJS.defaults.borderColor = 'hsla(120, 18%, 25%, 1.00)';
 
 // Helper function to create a readable label from a data key
@@ -34,6 +34,18 @@ const formatMetricKey = (key) => {
     .replace('ham', '(ham)') // special case for hectometer
     .replace(/\b\w/g, l => l.toUpperCase()); // capitalize words
 };
+
+// Helper function to generate a set of distinct colors for charts
+const generateDistinctColors = (numColors) => {
+    const colors = [];
+    for (let i = 0; i < numColors; i++) {
+        // Using a consistent starting hue for predictability
+        const hue = 200 + (360 / numColors) * i;
+        colors.push(`hsl(${hue % 360}, 75%, 60%)`);
+    }
+    return colors;
+};
+
 
 const WaterExtractionDashboard = ({ data: rawData }) => {
  
@@ -71,33 +83,73 @@ const WaterExtractionDashboard = ({ data: rawData }) => {
   
   const barChartData = useMemo(() => {
     if (!hasData || !hasMultipleDistricts) return null;
+
+    // --- LOGIC FOR MULTI-YEAR GROUPED BAR CHART ---
+    if (hasMultipleYears) {
+      // Group data by district, then by year for easy lookup
+      const dataByDistrictAndYear = rawData.reduce((acc, item) => {
+        const { district, year, [metricKey]: value } = item;
+        if (!acc[district]) {
+          acc[district] = {};
+        }
+        acc[district][year] = value;
+        return acc;
+      }, {});
+
+      const yearColors = generateDistinctColors(uniqueYears.length);
+
+      const datasets = uniqueYears.map((year, index) => {
+        // For each year, create a dataset.
+        // The data array must align with the `uniqueDistricts` labels.
+        const dataForYear = uniqueDistricts.map(
+          (district) => dataByDistrictAndYear[district]?.[year] ?? 0
+        );
+
+        return {
+          label: year.toString(),
+          data: dataForYear,
+          backgroundColor: yearColors[index],
+          borderColor: yearColors[index].replace('60%)', '50%)'),
+          borderWidth: 1,
+          borderRadius: 4,
+        };
+      });
+
+      return {
+        labels: uniqueDistricts,
+        datasets: datasets,
+      };
+    }
+
+    // --- ORIGINAL LOGIC for single-year data ---
     let districtMetrics = rawData.map(item => ({ district: item.district, value: item[metricKey] }));
     districtMetrics.sort((a, b) => b.value - a.value);
+
     return {
       labels: districtMetrics.map(d => d.district),
-datasets: [{
-  label: metricLabel,
-  data: districtMetrics.map(d => d.value),
-  backgroundColor: (ctx) => {
-    const chart = ctx.chart;
-    const { ctx: canvasCtx, chartArea } = chart;
-    if (!chartArea) return null;
-    const gradient = canvasCtx.createLinearGradient(0, 0, 0, chartArea.bottom);
-    gradient.addColorStop(0, 'rgba(0, 200, 255, 0.9)');
-    gradient.addColorStop(1, 'rgba(0, 100, 255, 0.3)');
-    return gradient;
-  },
-  borderColor: '#00B4FF',
-  borderWidth: 2,
-  borderRadius: 8,
-  hoverBackgroundColor: 'rgba(0, 180, 255, 0.9)',
-  hoverBorderColor: '#0090FF',
-  barPercentage: 0.7,
-  categoryPercentage: 0.6,
-}]
-
+      datasets: [{
+        label: metricLabel,
+        data: districtMetrics.map(d => d.value),
+        backgroundColor: (ctx) => {
+          const chart = ctx.chart;
+          const { ctx: canvasCtx, chartArea } = chart;
+          if (!chartArea) return null;
+          const gradient = canvasCtx.createLinearGradient(0, 0, 0, chartArea.bottom);
+          gradient.addColorStop(0, 'rgba(0, 200, 255, 0.9)');
+          gradient.addColorStop(1, 'rgba(0, 100, 255, 0.3)');
+          return gradient;
+        },
+        borderColor: '#00B4FF',
+        borderWidth: 2,
+        borderRadius: 8,
+        hoverBackgroundColor: 'rgba(0, 180, 255, 0.9)',
+        hoverBorderColor: '#0090FF',
+        barPercentage: 0.7,
+        categoryPercentage: 0.8,
+      }]
     };
-  }, [rawData, hasData, hasMultipleDistricts, metricKey, metricLabel]);
+  }, [rawData, hasData, hasMultipleDistricts, hasMultipleYears, metricKey, metricLabel, uniqueDistricts, uniqueYears]);
+
 
   const lineChartData = useMemo(() => {
     if (!hasData || !hasMultipleYears) return null;
@@ -141,7 +193,6 @@ datasets: [{
   // --- END OF CHART DATA PREPARATION ---
 
   
-  
 const handleGenerateReport = () => {
   const chart = barChartRef.current; // Get the chart instance
 
@@ -172,12 +223,16 @@ const handleGenerateReport = () => {
     const showLine = lineChartData && hasMultipleYears;
     const showPie = pieChartData && hasMultipleDistricts;
 
+    const barChartTitle = hasMultipleYears
+      ? 'District Comparison by Year'
+      : `District Comparison for ${uniqueYears.length > 0 ? uniqueYears[0] : ''}`;
+
     return (
         <main className="space-y-8">
             {showBar && (
               <div>
-                <h2 className="text-lg font-semibold text-gray-700 mb-4">District Comparison {uniqueYears.length === 1 ? `for ${uniqueYears[0]}` : ''}</h2>
-                <div className="relative" style={{ height: '400px' }}><Bar ref={barChartRef} options={chartOptions} data={barChartData} /></div>
+                <h2 className="text-lg font-semibold text-gray-700 mb-4">{barChartTitle}</h2>
+                <div className="relative" style={{ height: '500px' }}><Bar ref={barChartRef} options={chartOptions} data={barChartData} /></div>
               </div>
             )}
             {showLine && (
@@ -192,9 +247,9 @@ const handleGenerateReport = () => {
                   <div className="relative flex justify-center" style={{ height: '350px' }}><Pie options={{...chartOptions, maintainAspectRatio: false }} data={pieChartData} /></div>
               </div>
             )}
-              {!showBar && !showLine && !showPie && (
-                <p className="text-gray-600">The provided data is not suitable for the available chart types (e.g., single data point).</p>
-              )}
+             {!showBar && !showLine && !showPie && (
+               <p className="text-gray-600">The provided data is not suitable for the available chart types (e.g., single data point).</p>
+             )}
         </main>
     );
   };
